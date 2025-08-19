@@ -1,185 +1,523 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Solar Altitude Calculator</title>
-<style>
-  @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solar Calculator · 3D</title>
 
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(to right, #6a11cb, #2575fc);
-  }
+  <!-- Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
-  .container {
-    background: #fff;
-    border-radius: 20px;
-    padding: 40px;
-    width: 550px;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-    animation: slideIn 1s ease-in-out;
-  }
+  <style>
+    :root{
+      --primary:#ff9d00;
+      --accent:#4fb3ff;
+      --card-bg: rgba(18, 22, 30, 0.55);
+      --text:#f7f9fc;
+      --muted:#9fb0c0;
+      --glass: blur(10px) saturate(140%);
+      --ok:#00c389;
+      --warn:#ffb000;
+      --danger:#ff5a7a;
+    }
 
-  h2 {
-    text-align: center;
-    color: #2575fc;
-    margin-bottom: 30px;
-    font-size: 28px;
-    animation: fadeIn 1s ease-in-out;
-  }
+    /* Full-screen 3D background */
+    #space {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(1200px 1200px at 20% 20%, #0a0f1c 0%, #05070c 40%, #020308 100%);
+    }
 
-  .input-group {
-    display: flex;
-    align-items: center;
-    margin: 10px 0;
-  }
+    /* Page layout */
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid;
+      place-items: center;
+      overflow: hidden; /* keep the background immersive */
+    }
 
-  .input-group i {
-    margin-right: 10px;
-    color: #6a11cb;
-    min-width: 25px;
-    text-align: center;
-  }
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: min(960px, 92vw);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      align-items: start;
+    }
 
-  input {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-    transition: 0.3s;
-  }
+    /* Card styling (glassmorphism) */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: var(--glass);
+      -webkit-backdrop-filter: var(--glass);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      box-shadow:
+        0 20px 50px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
 
-  input:focus {
-    border-color: #6a11cb;
-    box-shadow: 0 0 8px rgba(106,17,203,0.3);
-    outline: none;
-  }
+    .panel {
+      padding: 22px 22px 16px;
+    }
 
-  button {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 10px;
-    background: #6a11cb;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    transition: 0.3s;
-    margin-top: 20px;
-  }
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      margin: 6px 0 18px;
+      font-size: clamp(18px, 2.6vw, 22px);
+    }
 
-  button:hover {
-    background: #2575fc;
-    transform: scale(1.05);
-  }
+    .title .sun-dot {
+      width: 14px; height: 14px; border-radius: 999px;
+      background: radial-gradient(circle at 40% 40%, #fff4d2 0%, #ffd27a 40%, #ff9d00 62%, #ff6a00 100%);
+      box-shadow: 0 0 24px #ffb34d, 0 0 64px #ff7a00aa;
+    }
 
-  #results {
-    margin-top: 25px;
-    background: #f0f0f0;
-    padding: 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    color: #333;
-    min-height: 120px;
-    animation: fadeIn 0.5s ease-in-out;
-  }
+    /* Inputs grid */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .full { grid-column: 1/-1; }
 
-  .high { color: #ff8c00; font-weight: bold; }    /* high sun */
-  .medium { color: #228b22; font-weight: bold; }  /* medium sun */
-  .low { color: #ff0000; font-weight: bold; }     /* low sun */
+    .field {
+      position: relative;
+    }
 
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-50px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .field .ico {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
 
-</style>
+    .input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px 12px 12px 36px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .input::placeholder { color: #90a3b8; }
+    .input:focus {
+      border-color: #2e9bff;
+      box-shadow: 0 0 0 3px #2e9bff26, inset 0 1px 0 rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: #0b0f16;
+      font-weight: 700;
+      letter-spacing: .2px;
+      background: linear-gradient(135deg, #ffd27a 0%, #ff9d00 46%, #ff6a00 100%);
+      box-shadow:
+        0 10px 28px rgba(255,140,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.4);
+      transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(79,179,255,0.4);
+      box-shadow: none;
+    }
+    .ghost:hover { background: rgba(79,179,255,0.08); }
+
+    /* Results card */
+    .results {
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: center;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 12px;
+      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+    .metric:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+    }
+    .metric .badge {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at 40% 40%, #fff4d2 0%, #ffd27a 40%, #ff9d00 62%, #ff6a00 100%);
+      box-shadow: 0 0 26px #ffb34d66, inset 0 1px 0 rgba(255,255,255,0.5);
+      color: #2b1b00;
+      font-size: 18px;
+    }
+    .metric .label { color: var(--muted); font-size: 12px; margin-bottom: 4px; letter-spacing: .3px; }
+    .metric .value { font-size: 20px; font-weight: 800; letter-spacing: 0.2px; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .tag.ok { color: #b7ffe9; border-color: #00c38955; background: #00c3891a; }
+    .tag.warn { color: #ffe7b7; border-color: #ffb00055; background: #ffb0001a; }
+    .tag.danger { color: #ffd0da; border-color: #ff5a7a55; background: #ff5a7a1a; }
+
+    /* Footer note */
+    .foot {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* Responsive */
+    @media (max-width: 880px){
+      body { overflow: auto; }
+      .wrap { grid-template-columns: 1fr; gap: 18px; padding: 18px 0 28px; }
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-  <h2>Solar Altitude Calculator</h2>
 
-  <div class="input-group"><i class="fa fa-calendar"></i><input type="number" id="day" placeholder="Day"></div>
-  <div class="input-group"><i class="fa fa-calendar-day"></i><input type="number" id="month" placeholder="Month"></div>
-  <div class="input-group"><i class="fa fa-clock"></i><input type="number" id="hour" placeholder="Hour (24h)"></div>
-  <div class="input-group"><i class="fa fa-clock"></i><input type="number" id="minute" placeholder="Minute"></div>
-  <div class="input-group"><i class="fa fa-map-marker-alt"></i><input type="number" id="latitude" placeholder="Latitude"></div>
-  <div class="input-group"><i class="fa fa-map-marker-alt"></i><input type="number" id="longLocal" placeholder="Local Longitude"></div>
-  <div class="input-group"><i class="fa fa-map-marker-alt"></i><input type="number" id="longStandard" placeholder="Standard Longitude"></div>
-  <div class="input-group"><i class="fa fa-sun"></i><input type="number" id="dst" placeholder="Daylight Saving (1/0)"></div>
-  <div class="input-group"><i class="fa fa-hourglass-half"></i><input type="number" id="ET" placeholder="Equation of Time (ET)"></div>
+  <!-- 3D space -->
+  <div id="space"></div>
 
-  <button onclick="calculate()">Calculate</button>
+  <!-- Content -->
+  <main class="wrap">
+    <!-- Inputs -->
+    <section class="card panel">
+      <div class="title"><span class="sun-dot"></span> Solar Angles Calculator</div>
 
-  <pre id="results"></pre>
-</div>
+      <div class="grid">
+        <div class="field">
+          <i class="ico fa-solid fa-calendar-day"></i>
+          <input class="input" id="day" type="number" placeholder="Day (1–31)">
+        </div>
+        <div class="field">
+          <i class="ico fa-solid fa-calendar"></i>
+          <input class="input" id="month" type="number" placeholder="Month (1–12)">
+        </div>
 
-<script>
-function deg2rad(deg){ return deg*Math.PI/180; }
-function rad2deg(rad){ return rad*180/Math.PI; }
+        <div class="field">
+          <i class="ico fa-solid fa-clock"></i>
+          <input class="input" id="hour" type="number" placeholder="Hour (0–23)">
+        </div>
+        <div class="field">
+          <i class="ico fa-regular fa-clock"></i>
+          <input class="input" id="minute" type="number" placeholder="Minute (0–59)">
+        </div>
 
-function dayNumber(day, month){
-  const daysInMonth = [0,31,28,31,30,31,30,31,31,30,31,30,31];
-  let total=0;
-  for(let i=1;i<month;i++) total+=daysInMonth[i];
-  return total+day;
-}
+        <div class="field">
+          <i class="ico fa-solid fa-location-crosshairs"></i>
+          <input class="input" id="latitude" type="number" step="0.0001" placeholder="Latitude (°)">
+        </div>
+        <div class="field">
+          <i class="ico fa-solid fa-location-dot"></i>
+          <input class="input" id="longLocal" type="number" step="0.0001" placeholder="Local Longitude (°)">
+        </div>
 
-function declination(N){
-  return 23.45 * Math.sin(deg2rad(360*(284+N)/365));
-}
+        <div class="field">
+          <i class="ico fa-solid fa-earth-africa"></i>
+          <input class="input" id="longStandard" type="number" step="0.0001" placeholder="Standard Longitude (°)">
+        </div>
+        <div class="field">
+          <i class="ico fa-solid fa-stopwatch"></i>
+          <input class="input" id="ET" type="number" step="0.01" placeholder="Equation of Time (min)">
+        </div>
 
-function hourAngle(solarTime){
-  return 15*(solarTime-12);
-}
+        <div class="field full">
+          <i class="ico fa-solid fa-sun"></i>
+          <input class="input" id="dst" type="number" placeholder="Daylight Saving (1 yes, 0 no)">
+        </div>
+      </div>
 
-function calculate(){
-  let day = parseInt(document.getElementById("day").value);
-  let month = parseInt(document.getElementById("month").value);
-  let hour = parseInt(document.getElementById("hour").value);
-  let minute = parseInt(document.getElementById("minute").value);
-  let latitude = parseFloat(document.getElementById("latitude").value);
-  let longLocal = parseFloat(document.getElementById("longLocal").value);
-  let longStandard = parseFloat(document.getElementById("longStandard").value);
-  let dst = parseInt(document.getElementById("dst").value);
-  let ET = parseFloat(document.getElementById("ET").value);
+      <div class="row">
+        <button class="btn" id="calcBtn"><i class="fa-solid fa-bolt"></i> Calculate</button>
+        <button class="btn ghost" id="clearBtn"><i class="fa-solid fa-eraser"></i> Clear</button>
+      </div>
 
-  if(dst===1) hour-=1;
+      <p class="foot"></p>
+    </section>
 
-  let localTime = hour + minute/60;
-  let solarTime = localTime + (4*(longLocal-longStandard)+ET)/60;
-  let H = hourAngle(solarTime);
+    <!-- Results -->
+    <section class="card panel">
+      <div class="title"><span class="sun-dot"></span> Results</div>
 
-  let N = dayNumber(day, month);
-  let delta = declination(N);
+      <div class="results" id="resultsBox">
+        <div class="metric">
+          <div class="badge"><i class="fa-solid fa-hashtag"></i></div>
+          <div>
+            <div class="label">Day of Year (N)</div>
+            <div class="value" id="nVal">—</div>
+          </div>
+        </div>
 
-  let sin_beta = Math.cos(deg2rad(latitude))*Math.cos(deg2rad(delta))*Math.cos(deg2rad(H))
-                 + Math.sin(deg2rad(latitude))*Math.sin(deg2rad(delta));
-  if(sin_beta>1) sin_beta=1;
-  if(sin_beta<-1) sin_beta=-1;
-  let beta = rad2deg(Math.asin(sin_beta));
+        <div class="metric">
+          <div class="badge"><i class="fa-solid fa-compass-drafting"></i></div>
+          <div>
+            <div class="label">Solar Declination (δ)</div>
+            <div class="value" id="decVal">—</div>
+          </div>
+        </div>
 
-  let cos_phi = (Math.sin(deg2rad(beta))*Math.sin(deg2rad(latitude))-Math.sin(deg2rad(delta))) /
-                 (Math.cos(deg2rad(beta))*Math.cos(deg2rad(latitude)));
-  if(cos_phi>1) cos_phi=1;
-  if(cos_phi<-1) cos_phi=-1;
-  let phi = rad2deg(Math.acos(cos_phi));
-  if(H>0) phi = 360 - phi;
+        <div class="metric">
+          <div class="badge"><i class="fa-regular fa-clock"></i></div>
+          <div>
+            <div class="label">Solar Time (hours)</div>
+            <div class="value" id="solTimeVal">—</div>
+          </div>
+        </div>
 
-  let betaClass = beta>45 ? 'high' : beta>15 ? 'medium' : 'low';
+        <div class="metric">
+          <div class="badge"><i class="fa-solid fa-rotate-right"></i></div>
+          <div>
+            <div class="label">Hour Angle (H)</div>
+            <div class="value" id="hVal">—</div>
+          </div>
+        </div>
 
-  let output = "";
-  output += `Day of year (N): ${N}\n`;
-  output += `Solar Altitude (β): ${beta.toFixed(2)}°\n`;
-  output += `Solar Azimuth (φ): ${phi.toFixed(2)}°\n`;
+        <div class="metric">
+          <div class="badge"><i class="fa-solid fa-sun"></i></div>
+          <div>
+            <div class="label">Solar Elevation (β)</div>
+            <div class="value" id="betaVal">—</div>
+            <div class="tag" id="betaTag"><i class="fa-solid fa-circle-info"></i> waiting…</div>
+          </div>
+        </div>
 
-  document.getElementById("results").innerHTML = `<span class="${betaClass}">${output}</span>`;
-}
-</script>
+        <div class="metric">
+          <div class="badge"><i class="fa-solid fa-compass"></i></div>
+          <div>
+            <div class="label">Solar Azimuth (φ)</div>
+            <div class="value" id="phiVal">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Three.js -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+
+  <script>
+    /* ---------- Math (match C++ formulas exactly) ---------- */
+    const deg2rad = d => d * Math.PI / 180;
+    const rad2deg = r => r * 180 / Math.PI;
+
+    function dayNumber(day, month){
+      const daysInMonth = [0,31,28,31,30,31,30,31,31,30,31,30,31];
+      let total = 0;
+      for(let i=1;i<month;i++) total += daysInMonth[i];
+      return total + day;
+    }
+    function declination(N){
+      return 23.45 * Math.sin(deg2rad(360.0 * (284 + N) / 365.0));
+    }
+    function hourAngle(solarTime){
+      return 15.0 * (solarTime - 12.0);
+    }
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+    function calculate(){
+      const day = parseInt(document.getElementById("day").value);
+      const month = parseInt(document.getElementById("month").value);
+      let hour = parseInt(document.getElementById("hour").value);
+      const minute = parseFloat(document.getElementById("minute").value);
+      const latitude = parseFloat(document.getElementById("latitude").value);
+      const longLocal = parseFloat(document.getElementById("longLocal").value);
+      const longStandard = parseFloat(document.getElementById("longStandard").value);
+      const ET = parseFloat(document.getElementById("ET").value);
+      const dst = parseInt(document.getElementById("dst").value);
+
+      if([day, month, hour, minute, latitude, longLocal, longStandard, ET, dst].some(v => Number.isNaN(v))){
+        flashBetaTag('danger', 'Missing/invalid inputs');
+        return;
+      }
+
+      if (dst === 1) hour -= 1;
+
+      const localTime = hour + minute/60.0;
+      const solarTime = localTime + (4*(longLocal - longStandard) + ET)/60.0;
+      const H = hourAngle(solarTime);
+
+      const N = dayNumber(day, month);
+      const delta = declination(N);
+
+      let sin_beta = Math.cos(deg2rad(latitude))*Math.cos(deg2rad(delta))*Math.cos(deg2rad(H))
+                   + Math.sin(deg2rad(latitude))*Math.sin(deg2rad(delta));
+      sin_beta = clamp(sin_beta, -1, 1);
+      const beta = rad2deg(Math.asin(sin_beta));
+
+      let cos_phi = (Math.sin(deg2rad(beta))*Math.sin(deg2rad(latitude)) - Math.sin(deg2rad(delta))) /
+                    (Math.cos(deg2rad(beta))*Math.cos(deg2rad(latitude)));
+      cos_phi = clamp(cos_phi, -1, 1);
+      let phi = rad2deg(Math.acos(cos_phi));
+      if (H > 0) phi = 360 - phi;
+
+      // Update UI
+      document.getElementById("nVal").textContent = N;
+      document.getElementById("decVal").textContent = `${delta.toFixed(2)}°`;
+      document.getElementById("solTimeVal").textContent = `${solarTime.toFixed(2)} h`;
+      document.getElementById("hVal").textContent = `${H.toFixed(2)}°`;
+      document.getElementById("betaVal").textContent = `${beta.toFixed(2)}°`;
+      document.getElementById("phiVal").textContent = `${phi.toFixed(2)}°`;
+
+      // Beta tag mood
+      if (beta > 45) flashBetaTag('ok', 'High sun (strong)');
+      else if (beta > 15) flashBetaTag('warn', 'Medium elevation');
+      else flashBetaTag('danger', 'Low sun');
+    }
+
+    function flashBetaTag(kind, text){
+      const tag = document.getElementById('betaTag');
+      tag.className = `tag ${kind}`;
+      tag.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${text}`;
+    }
+
+    // Buttons
+    document.getElementById('calcBtn').addEventListener('click', calculate);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      ['day','month','hour','minute','latitude','longLocal','longStandard','ET','dst'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      ['nVal','decVal','solTimeVal','hVal','betaVal','phiVal'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+      });
+      flashBetaTag('', 'waiting…');
+    });
+
+    /* ---------- Three.js background ---------- */
+    const space = document.getElementById('space');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    space.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 0, 38);
+
+    // Stars
+    const starsCount = 1200;
+    const starGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(starsCount * 3);
+    for (let i = 0; i < starsCount; i++) {
+      const r = 400 + Math.random() * 800;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      positions.set([x, y, z], i * 3);
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const starMat = new THREE.PointsMaterial({ size: 1.2, sizeAttenuation: true, color: 0xffffff, transparent: true, opacity: 0.9 });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
+
+    // Sun (emissive)
+    const sunGeo = new THREE.SphereGeometry(8, 64, 64);
+    const sunMat = new THREE.MeshStandardMaterial({
+      color: 0xff9d00,
+      emissive: 0xff7a00,
+      emissiveIntensity: 1.8,
+      roughness: 0.35,
+      metalness: 0.0
+    });
+    const sun = new THREE.Mesh(sunGeo, sunMat);
+    sun.position.set(-10, 4, -10);
+    scene.add(sun);
+
+    // Subtle corona (sprite glow)
+    const glowTexture = (() => {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const grd = ctx.createRadialGradient(size/2, size/2, 10, size/2, size/2, size/2);
+      grd.addColorStop(0, 'rgba(255,255,200,0.85)');
+      grd.addColorStop(0.35, 'rgba(255,180,0,0.45)');
+      grd.addColorStop(0.7, 'rgba(255,120,0,0.18)');
+      grd.addColorStop(1, 'rgba(255,80,0,0.02)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0,0,size,size);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      return tex;
+    })();
+    const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    const glow = new THREE.Sprite(glowMat);
+    glow.scale.set(42, 42, 1);
+    sun.add(glow);
+
+    // Light
+    const light = new THREE.PointLight(0xffa040, 6, 0, 2);
+    light.position.copy(sun.position);
+    scene.add(light);
+
+    // Subtle camera drift
+    let t = 0;
+    function animate(){
+      requestAnimationFrame(animate);
+      t += 0.0018;
+      sun.rotation.y += 0.0024;
+      stars.rotation.y += 0.00025;
+      stars.rotation.x += 0.00008;
+      camera.position.x = 38 * Math.sin(t * 0.6);
+      camera.position.z = 38 * Math.cos(t * 0.6);
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Resize
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+  </script>
 </body>
 </html>
